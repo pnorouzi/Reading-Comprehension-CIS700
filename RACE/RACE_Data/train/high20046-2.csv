@@ -1,0 +1,17 @@
+,answers,options,questions,article,id
+2,C,"['Monday', 'Wednesday', 'Friday', 'Saturday']",It will rain in New York on_.,"Tuesday Wednesday   Thursday    Friday  Saturday
+Hi  56degF/13degC   56degF/13degC   59degF/15degC   58degF/14degC   54degF/12degC
+Lo  42degF/6degC    47degF/8degC    50degF/10degC   46degF/8degC    45degF/7degC
+    Mostly sunny    Sunny to partly
+cloudy  Some sunshine
+giving way to
+clouds  A couple of
+morning showers Sun mixing
+with high clouds
+Other Locations
+Place   Conditions  Temperature Humidity    Pressure
+Chicago Overcast    45degF/7degC    68% 30.12 in
+London  Partly Sunny    55degF/13degC   58% 29.77 in
+Los Angeles Clear   52degF/11degC   25% 29.99 in
+San Francisco   Clear   42degF/6degC    84% 30.1 in
+Tokyo   Rain    50degF/10degC   87% 29.83 in",high20046.txt

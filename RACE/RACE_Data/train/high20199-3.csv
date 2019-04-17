@@ -1,0 +1,8 @@
+,answers,options,questions,article,id
+3,A,"['from Apple about iPhone problems', 'to Apple about iPhone 4 problems', 'to introduce the new iPhone 4', 'on how to pay back buyers for the faults']",The text is a letter   _  .,"Dear iPhone 4 Users,
+The iPhone 4 has been the most successful product in Apple's history. It is the best smartphone ever, and most users have told that they love it. So we were surprised when reading reports of reception   problems, and we immediately began researching them.
+To start with, holding tightly almost any mobile phone in certain ways will reduce its reception by 1 or more bars of signal strength. This is true of iPhone 4, iPhone 3GS, as well as many other phones. But some users have reported that iPhone 4 can drop 4 or 5 bars when tightly held in a way. This is a far bigger drop than normal, and as a result some have said the iPhone 4 has a faulty antenna  design.
+Upon research, we find that the formula  we use to calculate how many bars of signal strength to display is totally wrong. Our formula usually mistakenly displays 2 more bars than it should for a given signal strength. The big drop in bars is because the high bars were never real in the beginning.
+We will give a free software update to correct the formula. This software update  will also be available for iPhone 3GS. If you are not fully satisfied, you can return your undamaged iPhone to any Apple Retail Store or the online Apple Store within 30 days of buying and get all your money back.
+Thank you for your patience and support.
+                                                                   Apple",high20199.txt
