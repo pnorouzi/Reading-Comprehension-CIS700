@@ -1,0 +1,7 @@
+,answers,options,questions,article,id
+2,D,"['has been in use on a large scale.', 'can send out a warning a few minutes earlier.', 'must be connected with a powerful computer.', 'is still in a theoretical stage.']",We can learn from the passage that the algorithm   _  .,"The monitor ""watches"" deceleration (=slow down) and distance from a light - and ""guesses"" which cars are likely to break the Highway Code.
+Most importantly, the software can provide two seconds' warning if someone else is about to shoot across a crossroads - enough time for other drivers to hit the brakes.
+Jonathan How, the Professor of Aeronautics and Astronautics at MIT, says ""smart"" cars of the future may use the system to help drivers foresee and avoid potential accidents.
+The researchers tested the algorithm on data collected from an intersection   in Virginia, finding that it accurately identified potential violators within a couple of seconds of reaching a red light -- enough time, according to the researchers, for other drivers at an intersection to be able to react to the threat if alerted  .
+Compared to other efforts to model driving behavior, the MIT algorithm brought fewer false alarms, an important advantage for systems providing guidance to human drivers.
+The researchers report their findings in a paper that will appear in the journal IEEE Transactions on Intelligent Transportation Systems.",high21547.txt

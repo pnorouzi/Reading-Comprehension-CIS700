@@ -1,0 +1,11 @@
+,answers,options,questions,article,id
+0,C,"['5 hours 35 minutes', '5 hours 5 minutes', '4 hours 30 minutes', '4 hours 25 minutes']",What is the shortest time between Boston and New York by train?,"Read the following time table and then answer the following question.
+Train Time Table
+lv. (Leave) Boston        Ar. (Arrive) Midway     Ar. New York
+5:10 AM EX.(Except)Sun.     7:00 AM                10:45 AM
+7:10 AM Daily              9:00 AM                12:45 PM
+9:10 AM Ex. Sat. & Sun.     11:00 AM               2:45 PM
+10:00 AM Ex. Hol.(Holiday)  11:45 AM               2:55 PM
+1:15 PM Daily              3:15 PM                5:45 PM
+3:40 PM Ex. Hol.           5:40 PM                8:15 PM
+5:20 PM Daily              7:20 PM                9:55 PM",high7934.txt
