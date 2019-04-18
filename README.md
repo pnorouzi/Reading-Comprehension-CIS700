@@ -1,4 +1,4 @@
 # CIS700-SQuAD-RACE
 
 ## GloVe
-You must download https://drive.google.com/file/d/1_BkeCFTkXULEmPhW1h8UYCl83Bc_VHXl/view?usp=sharing in the root repo directory
+You must download https://bit.ly/2KM8Emo in the repo directory. This contains the GloVe embeddings
