@@ -5,7 +5,6 @@ import numpy as np
 import torch
 
 '''
-Ask me if you got question why we need a class to do this is a pytorch thing
 
 transformer_types:
 :pad
