@@ -27,6 +27,23 @@ class RACE_GloVe_Transform:
             self.transform = self.emebed_text_and_pad
         elif transformer_type == 'average':
             self.transform = self.embed_text_and_average
+    def preprocess_text(self, string):
+        """ String Cleaner
+        Takes a string cleans it according to edge cases and returns a list of words
+
+        :param string: input string
+        :return list of words
+        """
+
+        string = string.replace('.', ' . ')
+        string = string.replace('"', ' " ')
+        string = string.replace('\n', ' | ')
+        string = string.replace('?', ' ? ')
+        string = string.replace('!', ' ! ')
+
+        words = string.split(' ')
+
+        return words
 
     def emebed_text_and_pad(self, string, max_length = 4000):
         """ GloVe Word Embedding
@@ -39,13 +56,7 @@ class RACE_GloVe_Transform:
         :return torch tensor of size (glove-size)x(max_length)
         """
 
-        string = string.replace('.', ' . ')
-        string = string.replace('"', ' " ')
-        string = string.replace('\n', ' | ')
-        string = string.replace('?', ' ? ')
-        string = string.replace('!', ' ! ')
-
-        words = string.split(' ')
+        words = self.preprocess_text(string)
         num_words = len(words)
         glove_size = self.glove_size
 
@@ -73,9 +84,9 @@ class RACE_GloVe_Transform:
         :return torch tensor of size glove_size
         """
 
-        output = self.emebed_text_and_pad(string, max_length = len(string)/2)
+        output = self.emebed_text_and_pad(string, max_length = int(len(string)/2))
 
         # Average word vectors
-        output = np.mean(output, axis = 1)
+        output = output.numpy().mean(axis = 1)
 
         return torch.from_numpy(output)
