@@ -26,6 +26,7 @@ class RACE_GloVe_Transform:
             self.transform = self.emebed_text_and_pad
         elif transformer_type == 'average':
             self.transform = self.embed_text_and_average
+            
     def preprocess_text(self, string):
         """ String Cleaner
         Takes a string cleans it according to edge cases and returns a list of words
