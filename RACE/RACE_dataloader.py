@@ -10,9 +10,11 @@ import torchvision.transforms as transforms
 import pandas as pd
 from torch.utils import data
 
+from RACE_transforms import GloVe_Transform
+
 
 class RACE_Dataset(data.Dataset):
-    def __init__(self, root = 'RACE_Data/', split = 0):
+    def __init__(self, root = 'RACE_Data/', split = 0, transformer = None):
         """ Intializie a RACE Dataset
 
         :param root: Dataset folder path
@@ -20,7 +22,8 @@ class RACE_Dataset(data.Dataset):
         :return RACE_Dataset object
         """
         self.split = split
-
+        self.transformer = transformer
+        
         # Extract file paths for dataset
         self.files = []
         paths = ['train/', 'dev/', 'test/']
@@ -48,19 +51,29 @@ class RACE_Dataset(data.Dataset):
         answer_index = ord(df['answers']) - 65
         answer = literal_eval(df['options'])[answer_index]
 
-        return article, question, answer, options, answer_index
+        if self.transformer:
+            article_emb = self.transformer.transform(article)
+            question_emb = self.transformer.transform(question)
+            #options_np = '||OPTION BREAK||'.join(literal_eval(df['options']))self.transformer.transform(question)
+            answer_emd = self.transformer.transform(question)
+        else:
+            article_emb = None
+            question_emb = None
+            answer_emd = None
+
+        return article, question, answer, options, answer_index, article_emb, question_emb, answer_emd
 
 
-def get_dataloaders(batch_size = 32):
+def get_dataloaders(batch_size = 32, transformer = GloVe_Transform()):
     """Creates RACE train, dev and test dataloaders
 
     :param batch_size: size of dataloader batch
     :return train, dev, test Pytorch dataloaders
     """
 
-    train_dataset = RACE_Dataset(split = 0)
-    dev_dataset   = RACE_Dataset(split = 1)
-    test_dataset  = RACE_Dataset(split = 2)
+    train_dataset = RACE_Dataset(split = 0, transformer = transformer)
+    dev_dataset   = RACE_Dataset(split = 1, transformer = transformer)
+    test_dataset  = RACE_Dataset(split = 2, transformer = transformer)
 
     train_loader = data.DataLoader(train_dataset, batch_size = batch_size, shuffle = True)
     dev_loader   = data.DataLoader(dev_dataset,   batch_size = batch_size, shuffle = True)

@@ -22,7 +22,7 @@ embded_and_average(string): embeds each word and then takes the average of all t
 '''
 
 class GloVe_Transform:
-    def __init__(self, glove_size = 300):
+    def __init__(self, glove_size = 300, type = 'pad'):
         # Load GloVe embedding dictionary
         glove_path = '../GloVe/glove.6B'
         vectors = bcolz.open(f'{glove_path}/6B.{str(glove_size)}.dat')[:]
@@ -30,6 +30,14 @@ class GloVe_Transform:
         word2idx = pickle.load(open(f'{glove_path}/6B.{str(glove_size)}_idx.pkl', 'rb'))
         self.glove = {w: vectors[word2idx[w]] for w in words}
         self.glove_size = glove_size
+
+        if type == 'pad':
+            self.transform = self.embed_and_pad
+        elif type == 'average':
+            self.transform = self.embed_and_average
+        else:
+            self.transform = self.none
+
             
     def preprocess_text(self, string):
         """ String Cleaner
@@ -47,7 +55,7 @@ class GloVe_Transform:
         
         return string.split(' ')
 
-    def emebed_and_pad(self, string, max_length = 4000):
+    def embed_and_pad(self, string, max_length = 4000):
         """ GloVe Word Embedding
         Takes in a string however long and converts into word embedded np.array of
         size (glove-size)x(max_length) that is each column is a word. Moroever,
@@ -66,7 +74,7 @@ class GloVe_Transform:
         output = np.zeros((glove_size,max_length))
         for index, word in enumerate(words):
             # Convert word to vector
-            if word in self.glove:
+            if word in self.glove and len(word) > 0:
                 output[:, index] = self.glove[word.lower()]
             else:
                 #print(word)
@@ -85,8 +93,8 @@ class GloVe_Transform:
         :param string: input string
         :return torch tensor of size glove_size
         """
-
-        output = self.emebed_and_pad(string, max_length = int(len(string)/2))
+        words = self.preprocess_text(string)
+        output = self.embed_and_pad(string, max_length = len(words))
 
         # Average word vectors
         output = output.numpy().mean(axis = 1)
