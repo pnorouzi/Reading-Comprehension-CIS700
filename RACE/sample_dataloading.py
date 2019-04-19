@@ -7,8 +7,8 @@ train_loader, dev_loader, test_loader = get_dataloaders(batch_size = 32)
 # Iterate thru loader 
 for (article, question, answer, options, answer_index) in train_loader:
     
-	# article: string
-	# question: string
+    # article: string
+    # question: string
     # answer: string (element of options)
     # options: list of strings
     # answer_index: index of answer in the options list
