@@ -4,28 +4,32 @@ import bcolz
 import numpy as np
 import torch
 
+''' RACE_GloVe_Transform  
+This class converts string text into matricies of word vectors.
+If converts each word to a vector of specified size and then concatenates all 
+words in text along dimension 1.
+
+How to use?
+
+$ transformer = GloVe_Transform()
+$ string = ...some string...
+$ embdedded_string = transformer.emebed_text_and_pad(string, max_length = 1000)
+
+Tranfromer Options?
+emebed_text_and_pad(string, max_length = 4000): embeds each word as vector and pads/truncates to max_length with 0s
+embded_and_average(string): embeds each word and then takes the average of all the embedded vectors
+
 '''
 
-transformer_types:
-:pad
-:average
-
-'''
-
-class RACE_GloVe_Transform:
-    def __init__(self, transformer_type = 'embded_text_and_pad', glove_size = 300):
+class GloVe_Transform:
+    def __init__(self, glove_size = 300):
+        # Load GloVe embedding dictionary
         glove_path = '../GloVe/glove.6B'
         vectors = bcolz.open(f'{glove_path}/6B.{str(glove_size)}.dat')[:]
         words = pickle.load(open(f'{glove_path}/6B.{str(glove_size)}_words.pkl', 'rb'))
         word2idx = pickle.load(open(f'{glove_path}/6B.{str(glove_size)}_idx.pkl', 'rb'))
-
         self.glove = {w: vectors[word2idx[w]] for w in words}
         self.glove_size = glove_size
-
-        if transformer_type == 'pad':
-            self.transform = self.emebed_text_and_pad
-        elif transformer_type == 'average':
-            self.transform = self.embed_text_and_average
             
     def preprocess_text(self, string):
         """ String Cleaner
@@ -40,12 +44,10 @@ class RACE_GloVe_Transform:
         string = string.replace('\n', ' | ')
         string = string.replace('?', ' ? ')
         string = string.replace('!', ' ! ')
+        
+        return string.split(' ')
 
-        words = string.split(' ')
-
-        return words
-
-    def emebed_text_and_pad(self, string, max_length = 4000):
+    def emebed_and_pad(self, string, max_length = 4000):
         """ GloVe Word Embedding
         Takes in a string however long and converts into word embedded np.array of
         size (glove-size)x(max_length) that is each column is a word. Moroever,
@@ -75,7 +77,7 @@ class RACE_GloVe_Transform:
 
         return torch.from_numpy(output)
 
-    def embed_text_and_average(self, string):
+    def embed_and_average(self, string):
         """ GloVe Average Word Embdeding
         Takes in a string and convertes it to embded vectors matrix
         and then takes the average
@@ -84,9 +86,12 @@ class RACE_GloVe_Transform:
         :return torch tensor of size glove_size
         """
 
-        output = self.emebed_text_and_pad(string, max_length = int(len(string)/2))
+        output = self.emebed_and_pad(string, max_length = int(len(string)/2))
 
         # Average word vectors
         output = output.numpy().mean(axis = 1)
 
         return torch.from_numpy(output)
+
+    def none(self, string):
+        return string
