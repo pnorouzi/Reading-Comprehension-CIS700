@@ -9,10 +9,5 @@ train_loader, dev_loader, test_loader = get_dataloaders(batch_size = batch_size,
 # Iterate thru loader 
 for (article, question, answer, options, answer_index, article_emb, question_emb, answer_emd) in train_loader:
 
-	# article: string
-	# question: string
-    # answer: string (element of options)
-    # options: list of strings
-    # answer_index: index of answer in the options list
 
     pass
