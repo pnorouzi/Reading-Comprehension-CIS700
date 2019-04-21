@@ -147,7 +147,8 @@ def main():
     gradient_accumulation_steps = 8
     loss_scale = 128
     warmup_proportion = 0.1
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = "cpu"
     os.makedirs(output_dir, exist_ok=True)
     # Build the tokenizer
     tokenizer = BertTokenizer.from_pretrained(bert_model, do_lower_case=True)
@@ -183,7 +184,7 @@ def main():
     # Initialize the model
     model = BertForMultipleChoice.from_pretrained(bert_model, cache_dir=PYTORCH_PRETRAINED_BERT_CACHE /'model', num_choices = 4)
     model.to(device)
-
+    global_step = 0
     parameters = get_params(model)
     optimizer = BertAdam(parameters, lr = learning_rate, warmup = warmup_proportion, t_total = num_train_steps)
     train_data = prepare_data(train_features)
@@ -212,8 +213,8 @@ def main():
                 global_step += 1
             del batch
             if global_step%100==0:
-                logger.info("Training loss: {}, global step: {}".format(tr_loss/nb_tr_steps, global_step))
-
+                logger.info("Training loss: {}, global step: {}".format(training_loss/num_training_steps, global_step))
+            break
         ## evaluate on dev set
         if global_step%1000 == 0:
                 dev_data = process_race(data_dir+'/','dev/')
