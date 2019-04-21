@@ -147,8 +147,8 @@ def main():
     gradient_accumulation_steps = 8
     loss_scale = 128
     warmup_proportion = 0.1
-    #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    device = "cpu"
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    #device = "cpu"
     os.makedirs(output_dir, exist_ok=True)
     # Build the tokenizer
     tokenizer = BertTokenizer.from_pretrained(bert_model, do_lower_case=True)
