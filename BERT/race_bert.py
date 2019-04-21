@@ -52,6 +52,11 @@ def truncate_seq(token_a, token_b, max_seq_length):
             token_a.pop()
         else:
             token_b.pop()
+            
+def warmup_linear(x, warmup=0.002):
+    if x < warmup:
+        return x/warmup
+    return 1.0 - x
 def convert_to_bert_style(processed_data, tokenizer, max_seq_length):
     '''
     We will use the style suggested in this issue:
@@ -128,23 +133,23 @@ def main():
     #The path to data
     data_dir = 'RACE'
     #The BERT model to train, can be amongst bert-base-uncased, bert-large-uncased,  bert-base-cased
-    bert_model = 'bert-large-uncased'
+    bert_model = 'bert-base-uncased'
     # The output directory to store model checkpoints
     output_dir = 'large_models'
     # The max total input length after tokenization
     # Longer Sequences are truncated
     # Shorter ones are padded
-    max_seq_length = 320
+    max_seq_length = 120
     # The batch size (read https://github.com/google-research/bert/issues/38 to realize why 8 actually means 32 to the model)
     # On high level 4 options are taken as different inputs to the model, so 8*4 = 32
-    train_batch_size = 8
+    train_batch_size = 4
     # The learning rate
     learning_rate = 1e-5
     # Number of epochs        print(data['id'] + " processed")
 
     num_epochs = 2
     # Gradient accumulation steps, loss scale and device setup
-    gradient_accumulation_steps = 8
+    gradient_accumulation_steps = 4
     loss_scale = 128
     warmup_proportion = 0.1
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
