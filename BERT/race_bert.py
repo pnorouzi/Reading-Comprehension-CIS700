@@ -213,7 +213,7 @@ def main():
                 global_step += 1
             del batch
             if global_step%100==0:
-                logger.info("Training loss: {}, global step: {}".format(training_loss/num_training_steps, global_step)
+                logger.info("Training loss: {}, global step: {}".format(training_loss/num_training_steps, global_step))
         ## evaluate on dev set
         if global_step%1000 == 0:
                 dev_data = process_race(data_dir+'/','dev/')
