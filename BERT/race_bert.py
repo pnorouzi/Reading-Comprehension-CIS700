@@ -52,7 +52,7 @@ def truncate_seq(token_a, token_b, max_seq_length):
             token_a.pop()
         else:
             token_b.pop()
-            
+
 def warmup_linear(x, warmup=0.002):
     if x < warmup:
         return x/warmup
@@ -195,11 +195,12 @@ def main():
     train_data = prepare_data(train_features)
     sampler = RandomSampler(train_data)
     train_dataloader = DataLoader(train_data, sampler = sampler, batch_size = train_batch_size)
-    model.train()
+
     for epochs in range(num_epochs):
         training_loss = 0
         num_training_examples, num_training_steps = 0,0
         logger.info("Training Epoch: {}/{}".format(epochs+1, int(num_epochs)))
+        model.train()
         for step, batch in enumerate(train_dataloader):
             batch = tuple(t.to(device) for t in batch)
             input_ids, input_mask, segment_ids, label_ids = batch
@@ -219,32 +220,34 @@ def main():
             del batch
             if global_step%100==0:
                 logger.info("Training loss: {}, global step: {}".format(training_loss/num_training_steps, global_step))
+                model_to_save = model.module if hasattr(model, 'module') else model  # Only save the model it-self
+                output_model_file = os.path.join(output_dir, "pytorch_model_{}.bin".format(global_step))
+                torch.save(model_to_save.state_dict(), output_model_file)
         ## evaluate on dev set
-        if global_step%1000 == 0:
-                dev_data = process_race(data_dir+'/','dev/')
-                dev_features = convert_to_bert_style(dev_data, tokenizer, max_seq_length)
-                dev_data = prepare_data(dev_features)
-                dev_sampler = SequentialSampler(dev_data)
-                dev_dataloader = DataLoader(dev_data, sampler = dev_sampler, batch_size = 1)
-                model.eval()
-                dev_loss, dev_accuracy = 0,0
-                num_eval_examples, num_eval_steps = 0,0
-                for step, batch in enumerate(dev_dataloader):
-                    batch = tuple(t.to(device) for t in batch)
-                    input_ids, input_mask, segment_ids, label_ids = batch
+        dev_data = process_race(data_dir+'/','dev/')
+        dev_features = convert_to_bert_style(dev_data, tokenizer, max_seq_length)
+        dev_data = prepare_data(dev_features)
+        dev_sampler = SequentialSampler(dev_data)
+        dev_dataloader = DataLoader(dev_data, sampler = dev_sampler, batch_size = 1)
+        model.eval()
+        dev_loss, dev_accuracy = 0,0
+        num_eval_examples, num_eval_steps = 0,0
+        for step, batch in enumerate(dev_dataloader):
+            batch = tuple(t.to(device) for t in batch)
+            input_ids, input_mask, segment_ids, label_ids = batch
 
-                    with torch.no_grad():
-                        tmp_eval_loss = model(input_ids, segment_ids, input_mask, label_ids)
-                        logits = model(input_ids, segment_ids, input_mask)
+            with torch.no_grad():
+                tmp_eval_loss = model(input_ids, segment_ids, input_mask, label_ids)
+                logits = model(input_ids, segment_ids, input_mask)
 
-                    logits = logits.detach().cpu().numpy()
-                    label_ids = label_ids.to('cpu').numpy()
-                    tmp_eval_accuracy = accuracy(logits, label_ids)
-                    dev_loss += tmp_eval_loss.mean().item()
-                    dev_accuracy += tmp_eval_accuracy
-                    num_eval_examples += input_ids.size(0)
-                    num_eval_steps += 1
-                    del batch
+            logits = logits.detach().cpu().numpy()
+            label_ids = label_ids.to('cpu').numpy()
+            tmp_eval_accuracy = accuracy(logits, label_ids)
+            dev_loss += tmp_eval_loss.mean().item()
+            dev_accuracy += tmp_eval_accuracy
+            num_eval_examples += input_ids.size(0)
+            num_eval_steps += 1
+            del batch
 
                 dev_loss = dev_loss/num_eval_steps
                 dev_accuracy = dev_accuracy/num_eval_examples
@@ -263,7 +266,7 @@ def main():
 
     # Save a trained model
     model_to_save = model.module if hasattr(model, 'module') else model  # Only save the model it-self
-    output_model_file = os.path.join(args.output_dir, "pytorch_model.bin")
+    output_model_file = os.path.join(output_dir, "pytorch_model.bin")
     torch.save(model_to_save.state_dict(), output_model_file)
 
 if __name__=='__main__':
