@@ -139,7 +139,7 @@ def main():
     # The max total input length after tokenization
     # Longer Sequences are truncated
     # Shorter ones are padded
-    max_seq_length = 120
+    max_seq_length = 200
     # The batch size (read https://github.com/google-research/bert/issues/38 to realize why 8 actually means 32 to the model)
     # On high level 4 options are taken as different inputs to the model, so 8*4 = 32
     train_batch_size = 4
@@ -152,6 +152,7 @@ def main():
     gradient_accumulation_steps = 4
     loss_scale = 128
     warmup_proportion = 0.1
+    resume = False
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     #device = "cpu"
     os.makedirs(output_dir, exist_ok=True)
@@ -195,7 +196,6 @@ def main():
     train_data = prepare_data(train_features)
     sampler = RandomSampler(train_data)
     train_dataloader = DataLoader(train_data, sampler = sampler, batch_size = train_batch_size)
-
     for epochs in range(num_epochs):
         training_loss = 0
         num_training_examples, num_training_steps = 0,0
@@ -220,15 +220,18 @@ def main():
             del batch
             if global_step%100==0:
                 logger.info("Training loss: {}, global step: {}".format(training_loss/num_training_steps, global_step))
+            if global_step%1000==0:
                 model_to_save = model.module if hasattr(model, 'module') else model  # Only save the model it-self
                 output_model_file = os.path.join(output_dir, "pytorch_model_{}.bin".format(global_step))
-                torch.save(model_to_save.state_dict(), output_model_file)
+                torch.save(model.state_dict(), output_model_file)
+
         ## evaluate on dev set
         dev_data = process_race(data_dir+'/','dev/')
         dev_features = convert_to_bert_style(dev_data, tokenizer, max_seq_length)
         dev_data = prepare_data(dev_features)
         dev_sampler = SequentialSampler(dev_data)
         dev_dataloader = DataLoader(dev_data, sampler = dev_sampler, batch_size = 1)
+
         model.eval()
         dev_loss, dev_accuracy = 0,0
         num_eval_examples, num_eval_steps = 0,0
@@ -249,19 +252,19 @@ def main():
             num_eval_steps += 1
             del batch
 
-                dev_loss = dev_loss/num_eval_steps
-                dev_accuracy = dev_accuracy/num_eval_examples
+        dev_loss = dev_loss/num_eval_steps
+        dev_accuracy = dev_accuracy/num_eval_examples
 
-                result = {'dev_loss': dev_loss, 'dev_accuracy': dev_accuracy, 'global_step': global_step, 'loss': training_loss/num_training_steps}
+        result = {'dev_loss': dev_loss, 'dev_accuracy': dev_accuracy, 'global_step': global_step, 'loss': training_loss/num_training_steps}
 
 
-                output_eval_file = os.path.join(output_dir, "dev_results.txt")
+        output_eval_file = os.path.join(output_dir, "dev_results.txt")
 
-                with open(output_eval_file, "a+") as writer:
-                    logger.info("***** Eval results *****")
-                    for key in sorted(result.keys()):
-                        logger.info("  %s = %s", key, str(result[key]))
-                        writer.write("%s = %s\n" % (key, str(result[key])))
+        with open(output_eval_file, "a+") as writer:
+            logger.info("***** Eval results *****")
+            for key in sorted(result.keys()):
+                logger.info("  %s = %s", key, str(result[key]))
+                writer.write("%s = %s\n" % (key, str(result[key])))
 
 
     # Save a trained model
