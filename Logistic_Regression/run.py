@@ -34,10 +34,10 @@ from dataloader import RACE_Dataset, get_dataloaders
 from model import LogReg
 
 # Open preprocessed glove embeddings
-file = open("GloVe/processed_glove/word_to_idx_dictionary.pickle",'rb')
+file = open("GloVe/glove_processed/word_to_idx_dictionary.pickle",'rb')
 word_to_idx= pickle.load(file)
 file.close()
-file = open("GloVe/processed_glove/weights_matrix.pickle",'rb')
+file = open("GloVe/glove_processed/weights_matrix.pickle",'rb')
 weights_matrix = pickle.load(file)
 file.close()
 

@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader, Dataset
 
 class LogReg(nn.Module):
     def __init__(self):
-        super(Loggression, self).__init__()
+        super(LogReg, self).__init__()
         self.classifier = nn.Linear(900, 1)
     def forward(self, x):
         x = x.view(-1, x.size(-1))
