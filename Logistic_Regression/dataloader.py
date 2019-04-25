@@ -7,7 +7,6 @@ import torch.nn as nn
 from torch.utils import data
 from torch.utils.data import DataLoader, Dataset
 
-%matplotlib inline
 
 class RACE_Dataset(data.Dataset):
     def __init__(self, path, weights_matrix, word_to_idx, max_length = 500):
