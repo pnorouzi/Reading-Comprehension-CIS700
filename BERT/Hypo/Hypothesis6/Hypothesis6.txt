@@ -1,0 +1,1 @@
+{"answers": ["D"], "options": [["Red", "Blue", "Yellow", "Not Enough Information"]], "questions": ["What's Charlie's favourite color?"], "article": "Charlie likes dogs. Charlie likes to read and sing.", "id": "high20887.txt"}

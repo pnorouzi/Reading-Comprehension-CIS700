@@ -1,0 +1,1 @@
+{"answers": ["C"], "options": [["Store", "School", "Home", "Picnic"]], "questions": ["Where is Alice now?"], "article": "Alice went to the store after school. Then Alice went home.", "id": "high20887.txt"}

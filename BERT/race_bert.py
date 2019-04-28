@@ -6,7 +6,6 @@ import pickle
 import logging
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
 from torch.utils.data.distributed import DistributedSampler
-
 from pytorch_pretrained_bert.tokenization import BertTokenizer
 from pytorch_pretrained_bert.modeling import BertForMultipleChoice
 from pytorch_pretrained_bert.optimization import BertAdam
@@ -16,7 +15,7 @@ logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(messa
                     datefmt = '%m/%d/%Y %H:%M:%S',
                     level = logging.INFO)
 logger = logging.getLogger(__name__)
-
+logging.getLogger("gensim").setLevel(logging.WARNING)
 def process_race(root, path):
     path = root + path
     dataset = []
@@ -147,7 +146,7 @@ def main():
     learning_rate = 1e-5
     # Number of epochs        print(data['id'] + " processed")
 
-    num_epochs = 2
+    num_epochs = 3
     # Gradient accumulation steps, loss scale and device setup
     gradient_accumulation_steps = 4
     loss_scale = 128
@@ -198,6 +197,7 @@ def main():
     train_dataloader = DataLoader(train_data, sampler = sampler, batch_size = train_batch_size)
     for epochs in range(num_epochs):
         training_loss = 0
+        training_accuracy = 0
         num_training_examples, num_training_steps = 0,0
         logger.info("Training Epoch: {}/{}".format(epochs+1, int(num_epochs)))
         model.train()
@@ -209,6 +209,9 @@ def main():
             training_loss += loss.item()
             num_training_examples += input_ids.size(0)
             num_training_steps += 1
+            logits = model(input_ids, segment_ids, input_mask)
+            tmp_train_accuracy = accuracy(logits.detach().cpu().numpy(), label_ids.to('cpu').numpy())
+            training_accuracy+=tmp_train_accuracy
             loss.backward()
             if (step + 1) % gradient_accumulation_steps == 0:
                 lr_this_step = learning_rate * warmup_linear(global_step/num_train_steps, warmup_proportion)
@@ -220,10 +223,11 @@ def main():
             del batch
             if global_step%100==0:
                 logger.info("Training loss: {}, global step: {}".format(training_loss/num_training_steps, global_step))
-            if global_step%1000==0:
-                model_to_save = model.module if hasattr(model, 'module') else model  # Only save the model it-self
-                output_model_file = os.path.join(output_dir, "pytorch_model_{}.bin".format(global_step))
-                torch.save(model.state_dict(), output_model_file)
+        
+        logger.info("Training Accuracy: {}, epoch: {}".format(training_accuracy/num_training_examples,epochs))
+        model_to_save = model.module if hasattr(model, 'module') else model  # Only save the model it-self
+        output_model_file = os.path.join(output_dir, "pytorch_model_{}epochs.bin".format(global_step))
+        torch.save(model.state_dict(), output_model_file)
 
         ## evaluate on dev set
         dev_data = process_race(data_dir+'/','dev/')
@@ -265,12 +269,6 @@ def main():
             for key in sorted(result.keys()):
                 logger.info("  %s = %s", key, str(result[key]))
                 writer.write("%s = %s\n" % (key, str(result[key])))
-
-
-    # Save a trained model
-    model_to_save = model.module if hasattr(model, 'module') else model  # Only save the model it-self
-    output_model_file = os.path.join(output_dir, "pytorch_model.bin")
-    torch.save(model_to_save.state_dict(), output_model_file)
 
 if __name__=='__main__':
     main()
