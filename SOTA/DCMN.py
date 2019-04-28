@@ -268,7 +268,7 @@ class RACE_Loader():
      
     Data format:    
         Data must be pre-processed as BERT token embeddings in a JSON file. 
-        See format_data.py for more information.
+        See the attached data files for format.
         
         Fields should be:
             'article_tokens': token embeddings of article
