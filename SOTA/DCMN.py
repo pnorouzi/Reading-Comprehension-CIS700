@@ -6,7 +6,11 @@ the RACE dataset. See https://arxiv.org/pdf/1901.09381.pdf for
 details.
 """
 
-#!pip install pytorch-pretrained-bert
+# ==========================================================
+# IMPORTS
+# ==========================================================
+
+# !pip install pytorch-pretrained-bert
 
 from pytorch_pretrained_bert import BertModel, BertConfig
 from pytorch_pretrained_bert.modeling import BertPreTrainedModel
@@ -16,36 +20,77 @@ import torch.nn as nn
 import json, pickle
 from random import shuffle
 
+# ==========================================================
+# DUAL CO-MATCHING NETWORK MODEL
+# ==========================================================
+
 class DCMN(nn.Module):
     def __init__(self, batch_size):
         super(DCMN, self).__init__()
         self.bs = batch_size
+        # CLS and SEP tokens used for BERT input segmentation
         self.cls = self.gen_token_vector(101)
         self.sep = self.gen_token_vector(102)
+        # Load pre-trained BERT. If resources exist, can be made 'bert-large-uncased'.
         self.bert = BertModel.from_pretrained('bert-base-uncased')
+        # Matching units for passage-option and passage-question, respectively.
         self.match_opt = Matching_Attention()
         self.match_que = Matching_Attention()
+        # Single final pooling unit
         self.pool = Final_Pooling()
+        self.logsoftmax = nn.LogSoftmax()
 
     def forward(self, art, q, a, b, c, d, y=None):
         
-        # Skim article
+        '''In our forward pass, we obtain the full hidden
+        state for our article and our question from BERT. The
+        shape of this state is:
+        
+        [batch size, num of words, size of hidden state].
+        
+        Inputs:
+            art: The passage as BERT tokens. Shape is 
+                 [batch size, article length, size of hidden state].
+
+            q: The question as BERT tokens. Shape is 
+                 [batch size, question length, size of hidden state].
+
+            a, b, c, d: Options a, b, c, d, respectively. Shape is:
+                 [batch size, option length, size of hidden state].
+
+            y: Optional label, one of [0, 1, 2, 3].    
+            
+        Outputs:
+            If y is not provided, output is the probabilities of 
+            options a, b, c, and d, respectively. Shape is:
+                [batch size, 4].
+                
+            If y is provided, output is cross-entropy loss and 
+            batch accuracy.'''
+       
+        # Generate article hidden state.
+        
+        # Append CLS and SEP tokens
         art = torch.cat((self.cls, art, self.sep), dim=1) 
+        # Generate ids and masks
         ids, mask = self.get_comps(art.shape[1])
+        # Forward pass through BERT
         art, _ = self.bert(art, ids, mask, output_all_encoded_layers=False)
         del ids, mask
         
-        # Skim q
+        # Generate question hidden state.
         
         q = torch.cat((self.cls, q, self.sep), dim=1)
         ids, mask = self.get_comps(q.shape[1])
         q, _ = self.bert(q, ids, mask, output_all_encoded_layers=False)
         del ids, mask
+        
+        # Match question to passage.
 
         SQ, SPP = self.match_que.forward(q, art)
         del q
         
-        # Generate option probabilities
+        # Use matching unit and pooling unit to generate option probabilites.
         
         a = self.eval_option(a, art, SQ, SPP)
         b = self.eval_option(b, art, SQ, SPP)
@@ -56,8 +101,10 @@ class DCMN(nn.Module):
         final = torch.cat((a,b,c,d), dim=1)
         del a, b, c, d
         
+        # For convenience, loss and accuracy can be calculated below.
+        
         if y is None:
-            return final
+            return self.logsoftmax(final, dim=1)
         else:
             y_pred_val, y_pred = torch.max(final, 1)
             accuracy = (y == y_pred.squeeze()).float().mean()
@@ -68,25 +115,45 @@ class DCMN(nn.Module):
             return loss, accuracy
     
     def eval_option(self, opt, art, SQ, SPP):
+        '''This helper method matches each option to its
+        corresponding passage, and then uses the previous
+        question-passage matching to compute option
+        probability through the final pooling unit.'''
+        
+        # Generate option hidden state
+        
         opt = torch.cat((self.cls, opt, self.sep), dim=1)
         ids, mask = self.get_comps(opt.shape[1])
         opt, _ = self.bert(opt, ids, mask, output_all_encoded_layers=False)
         del ids, mask
         
+        # Match option hidden state to passage hidden state
+        
         SA, SP = self.match_opt.forward(opt, art)
         del opt, art
+        
+        # Pool matchings to output probabilities
         
         prob = self.pool(SP, SA, SPP, SQ)
         del SP, SA, SPP, SQ
         return prob
 
-    
     def get_comps(self, size):
+        '''This helper method generates BERT segments and masks. 
+        Because only one sequence is used, segments are all zero.
+        For masking, all ones were used. These hypterparameters 
+        were not specified in the SOTA paper, and represent an 
+        opportuntiy for improvement with the model.'''
+        
         ids = torch.zeros(self.bs, size, dtype=torch.long).to(device)
         mask = torch.ones(self.bs, size, dtype=torch.long).to(device)
         return ids, mask
     
     def gen_token_vector(self, tkn):
+        '''This helper method generates CLS and SEP
+        vectors of the batch size for concatenation with 
+        passage, question, and options.'''
+        
         v = torch.tensor([tkn]*self.bs)
         v = v.unsqueeze(1).to(device)
         return v
