@@ -5,6 +5,20 @@
 2. Unzip Data.zip in Logistic_Regression/
 3. From Logistic_Regression, run python3 run.py
 
+## Setup for CNN
+
+### To evaluate the model:
+
+1. Download and unzip the data from https://bit.ly/2VvxDyp into CNN/
+2. Download and unzip https://bit.ly/2GE1Frw into CNN/ .The files weight_matrix.pickle and word_to_idx.pickle should be directly under the CNN folder.
+3. Download https://bit.ly/2GS5idL and put it in CNN/
+4. Run cnn_eval.py
+
+### To train the model:
+
+1. Download and unzip the data from https://bit.ly/2VvxDyp into CNN/
+2. Download and unzip https://bit.ly/2GE1Frw into CNN/ .The files weight_matrix.pickle and word_to_idx.pickle should be directly under the CNN folder.
+3. Run cnn.py
 
 ## Setup for BERT
 
