@@ -1,4 +1,4 @@
-# CIS700-SQuAD-RACE
+# CIS700-BERT-RACE
 
 ## Setup for Logistic Regresion
 1. Download and unzip https://bit.ly/2GE1Frw into Logistic_Regression/Glove/
