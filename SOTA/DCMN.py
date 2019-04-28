@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
-"""
-
-This class implements the state-of-the-art Dual Co-Matching Network on 
+"""This class implements the state-of-the-art Dual Co-Matching Network on 
 the RACE dataset. See https://arxiv.org/pdf/1901.09381.pdf for 
 details.
-"""
+
+Implementation by Samuel Oshay for University of Pennsylvania's 
+CIS-700 Deep Learning, Spring 2019.
+
+Teammates: Leonardo Murri, Dewang Sultania, Peyman Norouzi."""
 
 # ==========================================================
 # IMPORTS
@@ -157,11 +159,23 @@ class DCMN(nn.Module):
         v = torch.tensor([tkn]*self.bs)
         v = v.unsqueeze(1).to(device)
         return v
+    
+# ==========================================================
      
 class Matching_Attention(nn.Module):
+    '''This unit implements the matching attention mechanism used
+    by the DCMN to match an option or the question to the passage.
+    
+    The notation used below is the exact notation used by the 
+    https://arxiv.org/pdf/1901.09381.pdf.
+    '''
+    
     def __init__(self, size=768):
         super(Matching_Attention, self).__init__()
         self.G = nn.Linear(size, size, bias=True)
+        # Paper calls for two sets of weights:
+        # One for matching candidate answer (self.fca)
+        # One for matching passage (self.fcp)
         self.fca = nn.Sequential(
             nn.Linear(2*size, size, bias=True),
             nn.ReLU(inplace=True)
@@ -170,7 +184,6 @@ class Matching_Attention(nn.Module):
             nn.Linear(2*size, size, bias=True),
             nn.ReLU(inplace=True)
         )
-        self.softmax = nn.Softmax(dim=-1)
 
     def forward(self, A, P):
         bs, A_len, l = A.size()
@@ -188,7 +201,7 @@ class Matching_Attention(nn.Module):
         W = W.view(bs, P_len, A_len)
         assert(W.shape==(bs, P_len, A_len))
                 
-        # Calculate matchings
+        # Calculate matchings using attention weights W.
         MP = torch.bmm(W, A)
         W = W.transpose(1, 2).contiguous()
         MA = torch.bmm(W, P)
@@ -196,7 +209,7 @@ class Matching_Attention(nn.Module):
         assert(MP.shape == (bs, P_len, l))
         assert(MA.shape == (bs, A_len, l))
         
-        # Element wise subtraction and dot
+        # Element wise subtraction and dot, constructing matching.
         SA = torch.cat((MA - A, MA * A), dim=2)
         SP = torch.cat((MP - P, MP * P), dim=2)
         SA = self.fca(SA)
@@ -207,6 +220,13 @@ class Matching_Attention(nn.Module):
         return SA, SP
     
 class Final_Pooling(nn.Module):
+    '''As specified in the paper, the final pooling layer
+    takes in the final hidden states from the two matching
+    units, does sequence-wise max pool on them, and passes
+    the concantenated vectors into a linear layer to construct
+    the relative probability that the corresponding candidate 
+    answer is correct.'''
+    
     def __init__(self, size=768):
         super(Final_Pooling, self).__init__()
         self.size = size
@@ -214,15 +234,19 @@ class Final_Pooling(nn.Module):
 
     def forward(self, SP, SA, SPP, SQ):
         bs = SP.shape[0]
+        
+        # Sequence-wise max pool.
         CP, _ = SP.max(1, keepdim=False)
         CA, _ = SA.max(1, keepdim=False)
         CPP, _ = SPP.max(1, keepdim=False)
         CQ, _ = SQ.max(1, keepdim=False)
         
+        # Concatenate and linear layer.
         final = torch.cat((CP, CA, CPP, CQ), dim=1)
         assert(final.shape==(bs, 4*self.size))
         final = self.out(final)
         del SP, SA, SPP, SQ, CP, CA, CPP, CQ, bs
+        
         return final
 
 class RACE_Loader():
