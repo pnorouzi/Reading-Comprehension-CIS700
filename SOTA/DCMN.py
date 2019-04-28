@@ -267,7 +267,9 @@ class RACE_Loader():
         opt_len: number of tokens in options/candidate answers
      
     Data format:    
-        Data must be pre-processed as BERT token embeddings in a JSON file.
+        Data must be pre-processed as BERT token embeddings in a JSON file. 
+        See format_data.py for more information.
+        
         Fields should be:
             'article_tokens': token embeddings of article
             'q_tokens': token embeddings of question
@@ -460,11 +462,11 @@ def main():
     # Parameters. Lack of memory, compute power, and researcher documentation 
     # led to suboptimal performance. See technical report for details.
     
-    batch_size = 4
-    art_len = 200
-    q_len = 20
-    opt_len = 10
-    num_epochs = 2
+    batch_size = 12
+    art_len = 400
+    q_len = 30
+    opt_len = 15
+    num_epochs = 3
 
     train_file = 'train_data_json.txt'
     dev_file = 'dev_data_json.txt'
