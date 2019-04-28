@@ -20,7 +20,7 @@
 2. Download and unzip https://bit.ly/2GE1Frw into CNN/ .The files weight_matrix.pickle and word_to_idx.pickle should be directly under the CNN folder.
 3. Run cnn.py
 
-## Setup for Feed Forward net
+## Setup for Feed Forward Net
 
 ### To train and evaluate the model:
 1. Download and unzip data from https://bit.ly/2IMpAY5
