@@ -32,5 +32,5 @@
 1. Run python3 race_bert.py it will run your model and save it in a folder called large_models/
 2. Run evaluate_bert.py post that to run it in test set.
 
-The folder Hypo contains all the hypothesis we tested, details regarding those are in the slides, technical report and the blog post
+The folder Hypo contains all the hypothesis we tested, details regarding those are in the slides (Attention class.pdf), technical report and the blog post.
 
