@@ -36,7 +36,7 @@
 
 ### To train and evaluate the model:
 
-1. Download dev and test data from https://bit.ly/2PF5v6Q.
+1. Download train, dev, and test data from https://bit.ly/2PF5v6Q.
 2. Ensure pytorch-pretrained-bert is installed.
 3. Run python DCMN.py where a GPU is installed and available.
 
