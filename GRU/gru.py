@@ -1,10 +1,12 @@
-from os.path import exists
-import torch
-import os
-import numpy as np
-import pandas as pd
-import pickle
-from ast import literal_eval
+# -*- coding: utf-8 -*-
+"""This class implements a basic GRU for the RACE dataset.
+Implementation by Samuel Oshay for University of Pennsylvania's
+CIS-700 Deep Learning, Spring 2019.
+Teammates: Leonardo Murri, Dewang Sultania, Peyman Norouzi."""
+
+# ==========================================================
+# IMPORTS
+# ==========================================================
 
 import torch
 import torch.nn as nn
@@ -12,98 +14,57 @@ import torchvision
 import torchvision.transforms as transforms
 from torch.utils import data
 
+import numpy as np
+import pandas as pd
+
+import csv
 from datetime import datetime
 
-device =  torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-import csv
-LOG_DIR = './logs'
-'''
-# TENSOR BOARD SETUP FOR GOOGLE COLAB
+# ==========================================================
+# GRU MODEL
+# ==========================================================
 
-get_ipython().system_raw(
-    'tensorboard --logdir {} --host 0.0.0.0 --port 6006 &'
-    .format(LOG_DIR)
-)
+class GRU_Network(nn.Module):
+    '''Model generates article, question, and options hidden states
+        indepently, then passes concatenation through a feed-forward net.'''
+    def __init__(self):
+        super(GRU_Network, self).__init__()
 
-!if [ -f ngrok ] ; then echo "Ngrok already installed" ; else wget https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip > /dev/null 2>&1 && unzip ngrok-stable-linux-amd64.zip > /dev/null 2>&1 ; fi
-get_ipython().system_raw('./ngrok http 6006 &')
-!curl -s http://localhost:4040/api/tunnels | python3 -c \
-    "import sys, json; print('Tensorboard Link: ' +str(json.load(sys.stdin)['tunnels'][0]['public_url']))"
+        self.art = nn.GRU(300, 64, batch_first=True, bidirectional=True)
+        self.que = nn.GRU(300, 32, batch_first=True, bidirectional=True)
+        self.opt = nn.GRU(300, 32, batch_first=True, bidirectional=True)
 
-# Code referenced from https://gist.github.com/gyglim/1f8dfb1b5c82627ae3efcfbbadb9f514
-'''
-import tensorflow as tf
-import numpy as np
-import scipy.misc
-try:
-    from StringIO import StringIO  # Python 2.7
-except ImportError:
-    from io import BytesIO         # Python 3.x
+        self.final = nn.Sequential(
+            nn.Sigmoid(),
+            nn.Linear(2*(64 + 32*5), 16),
+            nn.LeakyReLU(),
+            nn.Linear(16, 4),
+            nn.Sigmoid())
 
+    def forward(self, article, q, a, b, c, d):
+        article, _ = self.art(article)
+        q, _ = self.que(q)
+        a, _ = self.opt(a)
+        b, _ = self.opt(b)
+        c, _ = self.opt(c)
+        d, _ = self.opt(d)
 
-class Logger(object):
+        # Take only final hidden state of sequence
+        full = torch.cat((article[:,-1,:], q[:,-1,:], a[:,-1,:], b[:,-1,:], c[:,-1,:], d[:,-1,:]), dim=1)
 
-    def __init__(self, log_dir):
-        """Create a summary writer logging to log_dir."""
-        self.writer = tf.summary.FileWriter(log_dir)
+        return self.final(full)
 
-    def scalar_summary(self, tag, value, step):
-        """Log a scalar variable."""
-        summary = tf.Summary(value=[tf.Summary.Value(tag=tag, simple_value=value)])
-        self.writer.add_summary(summary, step)
+# ==========================================================
+# REFORMAT DATA
+# ==========================================================
 
-    def image_summary(self, tag, images, step):
-        """Log a list of images."""
-
-        img_summaries = []
-        for i, img in enumerate(images):
-            # Write the image to a string
-            try:
-                s = StringIO()
-            except:
-                s = BytesIO()
-            scipy.misc.toimage(img).save(s, format="png")
-
-            # Create an Image object
-            img_sum = tf.Summary.Image(encoded_image_string=s.getvalue(),
-                                       height=img.shape[0],
-                                       width=img.shape[1])
-            # Create a Summary value
-            img_summaries.append(tf.Summary.Value(tag='%s/%d' % (tag, i), image=img_sum))
-
-        # Create and write Summary
-        summary = tf.Summary(value=img_summaries)
-        self.writer.add_summary(summary, step)
-
-    def histo_summary(self, tag, values, step, bins=1000):
-        """Log a histogram of the tensor of values."""
-
-        # Create a histogram using numpy
-        counts, bin_edges = np.histogram(values, bins=bins)
-
-        # Fill the fields of the histogram proto
-        hist = tf.HistogramProto()
-        hist.min = float(np.min(values))
-        hist.max = float(np.max(values))
-        hist.num = int(np.prod(values.shape))
-        hist.sum = float(np.sum(values))
-        hist.sum_squares = float(np.sum(values**2))
-
-        # Drop the start of the first bin
-        bin_edges = bin_edges[1:]
-
-        # Add bin edges and counts
-        for edge in bin_edges:
-            hist.bucket_limit.append(edge)
-        for c in counts:
-            hist.bucket.append(c)
-
-        # Create and write Summary
-        summary = tf.Summary(value=[tf.Summary.Value(tag=tag, histo=hist)])
-        self.writer.add_summary(summary, step)
-        self.writer.flush()
+# !unzip data.zip;
+# Ensure data is unzipped
 
 def alter_file(f):
+    '''This helper method reformats the RACE dataset into the proper
+    format for the data loader below.'''
+
     with open(f + '.csv') as csv_file:
         with open(f + '_out.csv', 'w') as out_file:
             csv_reader = csv.reader(csv_file, delimiter=',')
@@ -131,10 +92,14 @@ def alter_file(f):
 
     assert(line_count % 4 == 1)
 
+# ==========================================================
+# DATA LOADERS
+# ==========================================================
 
+class RACE_Dataset(data.Dataset):
+    '''Uses GloVe embeddings to construct PyTorch-style dataset for RACE.
+    Code by Leonardo Murri.'''
 
-
-class RACE_Dataset_Logistic_Regression(data.Dataset):
     def __init__(self, path, dictionary, weights_matrix, in_idx = True):
         self.dictionary = dictionary
         self.in_idx = in_idx
@@ -184,9 +149,13 @@ def get_dataloaders(batch_size = 32):
     with open('data/weights_matrix.pickle', 'rb') as handle:
         weights_matrix = pickle.load(handle)
 
-    train_dataset = RACE_Dataset_Logistic_Regression('data/train_data_out.csv',  dictionary, weights_matrix, in_idx = True)
-    dev_dataset   = RACE_Dataset_Logistic_Regression('data/dev_data_out.csv',   dictionary, weights_matrix, in_idx = True)
-    test_dataset  = RACE_Dataset_Logistic_Regression('data/test_data_out.csv',  dictionary, weights_matrix, in_idx = True)
+    # Construct data sets
+
+    train_dataset = RACE_Dataset('data/train_data_out.csv',  dictionary, weights_matrix, in_idx = True)
+    dev_dataset   = RACE_Dataset('data/dev_data_out.csv',   dictionary, weights_matrix, in_idx = True)
+    test_dataset  = RACE_Dataset('data/test_data_out.csv',  dictionary, weights_matrix, in_idx = True)
+
+    # Use PyTorch DataLoader class
 
     train_loader = data.DataLoader(train_dataset, batch_size = batch_size, shuffle = True)
     dev_loader   = data.DataLoader(dev_dataset,   batch_size = batch_size, shuffle = True)
@@ -194,49 +163,23 @@ def get_dataloaders(batch_size = 32):
 
     return train_loader, dev_loader, test_loader
 
-class GRU_Network(nn.Module):
-    def __init__(self):
-        super(GRU_Network, self).__init__()
-
-        self.art = nn.GRU(300, 64, batch_first=True, bidirectional=True)
-
-        self.que = nn.GRU(300, 32, batch_first=True, bidirectional=True)
-
-        self.opt = nn.GRU(300, 32, batch_first=True, bidirectional=True)
-
-        self.final = nn.Sequential(
-            nn.Sigmoid(),
-            nn.Linear(2*(64 + 32*5), 16),
-            nn.LeakyReLU(),
-            nn.Linear(16, 4),
-            nn.Sigmoid()
-        )
-
-    def forward(self, article, q, a, b, c, d):
-        article, hart = self.art(article)
-        q, hq = self.que(q)
-        a, ha = self.opt(a)
-        b, hb = self.opt(b)
-        c, hc = self.opt(c)
-        d, hd = self.opt(d)
-
-        full = torch.cat((article[:,-1,:], q[:,-1,:]), dim=1)
-        full = torch.cat((full, a[:,-1,:]), dim=1)
-        full = torch.cat((full, b[:,-1,:]), dim=1)
-        full = torch.cat((full, c[:,-1,:]), dim=1)
-        full = torch.cat((full, d[:,-1,:]), dim=1)
-        return self.final(full)
-
+# ==========================================================
+# TRAIN GRU
+# ==========================================================
 
 def train_model(mdl, bs, learning_rate, num_epochs, text):
+
+    # Get dataloaders
     train_loader, dev_loader, test_loader = get_dataloaders(batch_size = bs)
+
+    # Construct optimizer and criterion
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(mdl.parameters(), lr=learning_rate)
 
     # Tensorboard connection
-    now = datetime.now()
-    logger = Logger('./logs/' + now.strftime("%Y %m %d-%H %M %S") + "/")
-    print('Tensorboard model name: ' + now.strftime("%Y %m %d-%H %M %S"))
+    # now = datetime.now()
+    # logger = Logger('./logs/' + now.strftime("%Y %m %d-%H %M %S") + "/")
+    # print('Tensorboard model name: ' + now.strftime("%Y %m %d-%H %M %S"))
 
     # Train the model
     total_step = len(train_loader)
@@ -263,20 +206,20 @@ def train_model(mdl, bs, learning_rate, num_epochs, text):
             _, y_pred = torch.max(yhat, 1)
             accuracy = (y == y_pred.squeeze()).float().mean()
 
-            info = { str(text + 'Loss'): loss.item(), str(text + 'Accuracy'): accuracy.item() }
-            for tag, value in info.items():
-                logger.scalar_summary(tag, value, epoch * len(train_loader) + i)
-
-            if (i+1) % 100 == 0:
-                print ('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}'
-                      .format(epoch+1, num_epochs, i+1, total_step, loss.item()))
-                print(accuracy.item())
+            #info = { str(text + 'Loss'): loss.item(), str(text + 'Accuracy'): accuracy.item() }
+            #for tag, value in info.items():
+                #logger.scalar_summary(tag, value, epoch * len(train_loader) + i)
 
     return mdl, dev_loader, test_loader
 
+# ==========================================================
+# TEST GRU
+# ==========================================================
+
 def tests(mdl, dev_loader, test_loader):
 
-    # DEV TEST
+    # Run test on dev dataset
+    mdl.eval()
     with torch.no_grad():
         correct = 0
         total = 0
@@ -294,8 +237,10 @@ def tests(mdl, dev_loader, test_loader):
             _, y_pred = torch.max(yhat, 1)
             correct += (y == y_pred).sum().item()
             total += y.shape[0]
+
         print('Accuracy of the network on the dev set: {} %'.format(100 * correct / total))
 
+    # Run test on test dataset
     with torch.no_grad():
         correct = 0
         total = 0
@@ -313,15 +258,28 @@ def tests(mdl, dev_loader, test_loader):
             _, y_pred = torch.max(yhat, 1)
             correct += (y == y_pred).sum().item()
             total += y.shape[0]
+
         print('Accuracy of the network on the test set: {} %'.format(100 * correct / total))
 
+# ==========================================================
+# MAIN
+# ==========================================================
 
-files = ['data/train_data', 'data/dev_data', 'data/test_data']
+def main():
 
-for f in files:
-    alter_file(f)
+    # Load and process data
+    files = ['data/train_data', 'data/dev_data', 'data/test_data']
 
-train_loader, dev_loader, test_loader = get_dataloaders(batch_size = 32)
+    for f in files:
+        alter_file(f)
 
-gru_mdl, dev_loader, test_loader = train_model(GRU_Network().to(device), 32, 0.002, 3, "GRU ")
-tests(gru_mdl, dev_loader, test_loader)
+    # Train model
+
+    gru_mdl, dev_loader, test_loader = train_model(GRU_Network().to(device), 32, 0.002, 3, "GRU ")
+
+    # Evaluate model
+
+    tests(gru_mdl, dev_loader, test_loader)
+
+if __name__=='__main__':
+    main()

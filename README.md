@@ -43,5 +43,16 @@
 1. Run python3 race_bert.py it will run your model and save it in a folder called large_models/
 2. Run evaluate_bert.py post that to run it in test set.
 
+## Setup for DCMN
+
+### To train and evaluate the model:
+
+1. Download train, dev, and test data from https://bit.ly/2PF5v6Q.
+2. Ensure pytorch-pretrained-bert is installed.
+3. Run python DCMN.py where a GPU is installed and available.
+
+## Data Hypotheses
+
 The folder Hypo contains all the hypothesis we tested, details regarding those are in the slides (Attention class.pdf), technical report and the blog post.
+
 
