@@ -27,6 +27,8 @@ from datetime import datetime
 # ==========================================================
 
 class GRU_Network(nn.Module):
+    '''Model generates article, question, and options hidden states
+        indepently, then passes concatenation through a feed-forward net.'''
     def __init__(self):
         super(GRU_Network, self).__init__()
         
@@ -49,6 +51,7 @@ class GRU_Network(nn.Module):
         c, _ = self.opt(c)
         d, _ = self.opt(d)
         
+        # Take only final hidden state of sequence
         full = torch.cat((article[:,-1,:], q[:,-1,:], a[:,-1,:], b[:,-1,:], c[:,-1,:], d[:,-1,:]), dim=1)
 
         return self.final(full) 
@@ -61,6 +64,9 @@ class GRU_Network(nn.Module):
 # Ensure data is unzipped
     
 def alter_file(f):
+    '''This helper method reformats the RACE dataset into the proper
+    format for the data loader below.'''
+    
     with open(f + '.csv') as csv_file:
         with open(f + '_out.csv', 'w') as out_file:
             csv_reader = csv.reader(csv_file, delimiter=',')
@@ -93,6 +99,9 @@ def alter_file(f):
 # ==========================================================
       
 class RACE_Dataset(data.Dataset):
+    '''Uses GloVe embeddings to construct PyTorch-style dataset for RACE.
+    Code by Leonardo Murri.'''
+    
     def __init__(self, path, dictionary, weights_matrix, in_idx = True):
         self.dictionary = dictionary
         self.in_idx = in_idx
@@ -142,10 +151,14 @@ def get_dataloaders(batch_size = 32):
     with open('data/weights_matrix.pickle', 'rb') as handle:
         weights_matrix = pickle.load(handle)
         
+    # Construct data sets
+        
     train_dataset = RACE_Dataset('data/train_data_out.csv',  dictionary, weights_matrix, in_idx = True)
     dev_dataset   = RACE_Dataset('data/dev_data_out.csv',   dictionary, weights_matrix, in_idx = True)
     test_dataset  = RACE_Dataset('data/test_data_out.csv',  dictionary, weights_matrix, in_idx = True)
 
+    # Use PyTorch DataLoader class 
+    
     train_loader = data.DataLoader(train_dataset, batch_size = batch_size, shuffle = True)
     dev_loader   = data.DataLoader(dev_dataset,   batch_size = batch_size, shuffle = True)
     test_loader  = data.DataLoader(test_dataset,  batch_size = batch_size, shuffle = True)
@@ -157,7 +170,11 @@ def get_dataloaders(batch_size = 32):
 # ==========================================================
       
 def train_model(mdl, bs, learning_rate, num_epochs, text):
+    
+    # Get dataloaders 
     train_loader, dev_loader, test_loader = get_dataloaders(batch_size = bs)
+    
+    # Construct optimizer and criterion
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(mdl.parameters(), lr=learning_rate)  
 
@@ -203,7 +220,8 @@ def train_model(mdl, bs, learning_rate, num_epochs, text):
 
 def tests(mdl, dev_loader, test_loader):
     
-    # DEV TEST
+    # Run test on dev dataset
+    mdl.eval()
     with torch.no_grad():
         correct = 0
         total = 0
@@ -224,6 +242,7 @@ def tests(mdl, dev_loader, test_loader):
             
         print('Accuracy of the network on the dev set: {} %'.format(100 * correct / total))
         
+    # Run test on test dataset
     with torch.no_grad():
         correct = 0
         total = 0
