@@ -27,6 +27,8 @@ from random import shuffle
 # ==========================================================
 
 class DCMN(nn.Module):
+    '''The main Dual Co-Matching Network model.'''
+    
     def __init__(self, batch_size):
         super(DCMN, self).__init__()
         self.bs = batch_size
@@ -43,7 +45,6 @@ class DCMN(nn.Module):
         self.logsoftmax = nn.LogSoftmax()
 
     def forward(self, art, q, a, b, c, d, y=None):
-        
         '''In our forward pass, we obtain the full hidden
         state for our article and our question from BERT. The
         shape of this state is:
@@ -219,6 +220,8 @@ class Matching_Attention(nn.Module):
         del W, MA, MP, A, P
         return SA, SP
     
+# ==========================================================
+    
 class Final_Pooling(nn.Module):
     '''As specified in the paper, the final pooling layer
     takes in the final hidden states from the two matching
@@ -249,22 +252,54 @@ class Final_Pooling(nn.Module):
         
         return final
 
+# ==========================================================
+# RACE DATA LOADER
+# ==========================================================
+
 class RACE_Loader():
+    '''This class implements a data iterator for RACE.
+    
+    Inputs:
+        f: filename of data
+        bs: batch size
+        art_len: number of tokens in article 
+        q_len: number of tokens in q_len
+        opt_len: number of tokens in options/candidate answers
+     
+    Data format:    
+        Data must be pre-processed as BERT token embeddings in a JSON file.
+        Fields should be:
+            'article_tokens': token embeddings of article
+            'q_tokens': token embeddings of question
+            'a_tokens': token embeddings of option a
+            'b_tokens': token embeddings of option b
+            'c_tokens': token embeddings of option c
+            'd_tokens': token embeddings of option d
+            'y': integer representation of label, in [0, 1, 2, 3].'''
+    
     def __init__(self, f, bs, art_len, q_len, opt_len):
+        
+        # Save parameters
         self.bs = bs
-        self.file = f
+        self.file = f 
         self.art_len = art_len
         self.q_len = q_len
         self.opt_len = opt_len
-        assert(self.art_len <= 512)
-        assert(self.q_len <= 512)
-        assert(self.opt_len <= 512)
         
+        # Single-sequence base BERT is limited to 510 + CLS + SEP tokens.
+        assert(self.art_len <= 510)
+        assert(self.q_len <= 510)
+        assert(self.opt_len <= 510)
+        
+        # Load data
         self.loader = self.load_data(f)
+        
     def has_next(self):
         return (len(self.loader) >= self.bs)
     
     def next(self):
+        '''Constructs next batch, Java iterator style!'''
+        
         assert(self.has_next())
         count = self.bs
         article = []
@@ -278,6 +313,7 @@ class RACE_Loader():
             # Get observation
             obs = self.loader.pop()
             
+            # Build and pad batch
             article.append(self.pad(obs['article_tokens'], self.art_len))
             q.append(self.pad(obs['q_tokens'], self.q_len))
             a.append(self.pad(obs['a_tokens'], self.opt_len))
@@ -286,7 +322,8 @@ class RACE_Loader():
             d.append(self.pad(obs['d_tokens'], self.opt_len))
             y.append(int(obs['y']))
             count -= 1
-            
+         
+        # Tensorify and put to GPU
         article = torch.tensor(article).to(device)
         q = torch.tensor(q).to(device)
         a = torch.tensor(a).to(device)
@@ -294,35 +331,59 @@ class RACE_Loader():
         c = torch.tensor(c).to(device)
         d = torch.tensor(d).to(device)
         y = torch.tensor(y).to(device)  
+        
         return article, q, a, b, c, d, y
     
     def pad(self, tokens, length):
+        '''This helper method pads BERT tokens with zeros to
+        make a tensor batch.'''
+        
         if len(tokens) > length:
             tokens = tokens[0:length]
+            
         elif len(tokens) < length:
             tokens = tokens + [0] * (length - len(tokens))
+            
         return tokens
         
-        
     def load_data(self, file):
+        '''Loads data into list, from JSON.'''
+        
         with open(file) as f:  
             data = json.load(f)
-    
+        
+        # Remove header
         data_loader = data[1:]
+        
+        # Randomize order of data
         shuffle(data_loader)
+        
         return data_loader
     
     def num_batches(self):
         return (len(self.loader) // self.bs)
     
     def reset_loader(self):
+        '''Reloads and shuffles data, for next epoch.'''
+        
         self.loader = self.load_data(self.file)
+        
+# ==========================================================
+# TRAINING LOOP
+# ==========================================================
 
 def train_bert(mdl, data_loader, optimizer, num_epochs):
+    '''Trains specified mdl, using data in data_loader and the
+    specified optimizer for num_epochs.
+    
+    Saves model state, as well as loss and acurracy history, 
+    at end of each epoch.'''
+    
     losses = []
     accs = []
     criterion = nn.CrossEntropyLoss()
     mdl.train()
+    
     for epoch in range(num_epochs):
         curr = 0
         total = data_loader.num_batches()
@@ -342,26 +403,33 @@ def train_bert(mdl, data_loader, optimizer, num_epochs):
             losses.append(loss.item())
             accs.append(acc.item())
 
+            # Print an update
             if (curr+1) % 20 == 0:
                 print ('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}, Acc: {:.4f}' 
                        .format(epoch+1, num_epochs, curr+1, total, loss.item(), acc.item()))
             curr += 1
+         
+        # At end of epoch, save model and results
         torch.save(mdl, "dcmn_" + str(epoch+1) + ".pt")
         with open("dcmn_results_" + str(epoch+1) + ".txt", "wb") as outf: 
             pickle.dump((losses, accs), outf)
+            
+        # Reset data loader and shuffle data.
         data_loader.reset_loader()
-    print(losses)
-    print(accs)
-    print("Success.")
+        
     return mdl, losses, accs
+
+# ==========================================================
+# TESTING LOOP
+# ==========================================================
 
 def test_bert(mdl, dev_loader, test_loader):
     mdl.eval()
     dev_acc = sub_test_bert(mdl, dev_loader)
     test_acc = sub_test_bert(mdl, test_loader)
-    print('Accuracy of the network on the dev set: {} %'.format(100 * dev_acc))
-    print('Accuracy of the network on the test set: {} %'.format(100 * test_acc))
-
+    
+    return dev_acc, test_acc
+    
 def sub_test_bert(mdl, loader):
     correct = 0
     total = 0
@@ -378,12 +446,20 @@ def sub_test_bert(mdl, loader):
             del y, yhat, y_pred
     return correct / total
 
+# ==========================================================
+# MAIN
+# ==========================================================
+
 def main():
+    
     print("Initializing DCMN...")
+    
+    # Push to GPU. 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     
-    # Parameters
-
+    # Parameters. Lack of memory, compute power, and researcher documentation 
+    # led to suboptimal performance. See technical report for details.
+    
     batch_size = 4
     art_len = 200
     q_len = 20
@@ -425,7 +501,10 @@ def main():
     test_loader = RACE_Loader(test_file, 
         batch_size, art_len, q_len, opt_len)
 
-    test_bert(mdl, dev_loader, test_loader)
+    dev_acc, test_acc = test_bert(mdl, dev_loader, test_loader)
+    
+    print('Accuracy on the dev set: {} %'.format(100 * dev_acc))
+    print('Accuracy on the test set: {} %'.format(100 * test_acc))
 
     print("DCMN complete!")
 
