@@ -1,0 +1,307 @@
+# -*- coding: utf-8 -*-
+"""This class implements a basic feed forward net for the RACE dataset.
+
+Implementation by Samuel Oshay for University of Pennsylvania's
+CIS-700 Deep Learning, Spring 2019.
+
+Teammates: Leonardo Murri, Dewang Sultania, Peyman Norouzi."""
+
+# ==========================================================
+# IMPORTS
+# ==========================================================
+
+import torch
+import torch.nn as nn
+import torchvision
+import torchvision.transforms as transforms
+from torch.utils import data
+
+import numpy as np
+import pandas as pd
+
+import csv
+from datetime import datetime
+
+# ==========================================================
+# FFN MODEL
+# ==========================================================
+
+class FFN(nn.Module):
+    def __init__(self):
+        super(FFN, self).__init__()
+        
+        self.art = nn.Sequential(
+            nn.Linear(400*300, 256),
+            nn.LeakyReLU(),
+            nn.Linear(256, 64),
+            nn.Sigmoid()
+        )
+        
+        self.que = nn.Sequential(
+            nn.Linear(30*300, 128),
+            nn.LeakyReLU(),
+            nn.Linear(128, 64),
+            nn.Sigmoid()
+        )
+        
+        self.opt = nn.Sequential(
+            nn.Linear(16*300, 64),
+            nn.LeakyReLU(),
+            nn.Linear(64, 32),
+            nn.Sigmoid()
+        )
+        
+        self.final = nn.Sequential(
+            nn.Linear(64 + 64 + 32*4, 32),
+            nn.LeakyReLU(),
+            nn.Linear(32, 4),
+            nn.Sigmoid()
+        )
+    
+    def forward(self, art, q, a, b, c, d):
+        article = art.view(art.size()[0], -1) 
+        q = q.view(q.size()[0], -1) 
+        a = a.view(a.size()[0], -1) 
+        b = b.view(b.size()[0], -1) 
+        c = c.view(c.size()[0], -1) 
+        d = d.view(d.size()[0], -1) 
+        
+        article = self.art(article)
+        q = self.que(q)
+        a = self.opt(a)
+        b = self.opt(b)
+        c = self.opt(c)
+        d = self.opt(d)
+        
+        full = torch.cat((article, q, a, b, c, d), dim=1)
+        return self.final(full) 
+
+# ==========================================================
+# REFORMAT DATA
+# ==========================================================
+
+# !unzip data.zip;
+# Ensure data is unzipped
+
+def alter_file(f):
+    '''This helper method reformats the RACE dataset into the proper
+    format for the data loader below.'''
+
+    with open(f + '.csv') as csv_file:
+        with open(f + '_out.csv', 'w') as out_file:
+            csv_reader = csv.reader(csv_file, delimiter=',')
+            writer = csv.writer(out_file)
+
+            line_count = 0
+            last = ['article', 'question', 'a', 'b', 'c', 'd', 'y']
+            for row in csv_reader:
+                if line_count == 0:
+                    line_count += 1
+                elif line_count % 4 != 1:
+                    idx = (line_count - 1) % 4
+                    last[idx+2] = row[2]
+                    if (row[3] == '1'):
+                        last[6] = str(idx)
+                    line_count += 1
+                else:
+                    writer.writerow(last)
+                    last[0] = row[0]
+                    last[1] = row[1]
+                    last[2] = row[2]
+                    if (row[3] == '1'):
+                        last[6] = '0'
+                    line_count += 1
+
+    assert(line_count % 4 == 1)
+
+# ==========================================================
+# DATA LOADERS
+# ==========================================================
+
+class RACE_Dataset(data.Dataset):
+    '''Uses GloVe embeddings to construct PyTorch-style dataset for RACE.
+    Code by Leonardo Murri.'''
+
+    def __init__(self, path, dictionary, weights_matrix, in_idx = True):
+        self.dictionary = dictionary
+        self.in_idx = in_idx
+        self.weights_matrix = weights_matrix
+        self.data = pd.read_csv(path)
+
+    def __len__(self):
+        return self.data.shape[0]
+
+    def __emb__(self, text, limit):
+        text_np = self.text_to_word_idx(text)
+        text_emb = self.idx_array_to_embdedding_avg(text_np)
+        if (text_emb.shape[0] < limit):
+            temp = np.zeros((limit,300))
+            temp[:text_emb.shape[0],:] = text_emb
+            text_emb = temp
+        else:
+            text_emb = text_emb[-limit:,:]
+        return torch.from_numpy(text_emb)
+
+    def __getitem__(self, index):
+        df = self.data.iloc[index]
+        article = self.__emb__(df['article'], 400)
+        question = self.__emb__(df['question'], 30)
+        a = self.__emb__(df['a'], 16)
+        b = self.__emb__(df['b'], 16)
+        c = self.__emb__(df['c'], 16)
+        d = self.__emb__(df['d'], 16)
+        return article, question, a, b, c, d, torch.tensor(int(df['y']))
+
+    def text_to_word_idx(self, text):
+        test_idx = []
+        for word in text.split(' '):
+            test_idx.append(self.dictionary[word])
+        return np.array(test_idx)
+
+    def idx_array_to_embdedding_avg(self, data):
+        all_embeddings = np.zeros((len(data),300))
+        for i, num in enumerate(data):
+            all_embeddings[i, :] = self.weights_matrix[num,:]
+        return all_embeddings
+
+def get_dataloaders(batch_size = 32):
+
+    with open('data/word_to_idx_dictionary.pickle', 'rb') as handle:
+        dictionary = pickle.load(handle)
+    with open('data/weights_matrix.pickle', 'rb') as handle:
+        weights_matrix = pickle.load(handle)
+
+    # Construct data sets
+
+    train_dataset = RACE_Dataset('data/train_data_out.csv',  dictionary, weights_matrix, in_idx = True)
+    dev_dataset   = RACE_Dataset('data/dev_data_out.csv',   dictionary, weights_matrix, in_idx = True)
+    test_dataset  = RACE_Dataset('data/test_data_out.csv',  dictionary, weights_matrix, in_idx = True)
+
+    # Use PyTorch DataLoader class
+
+    train_loader = data.DataLoader(train_dataset, batch_size = batch_size, shuffle = True)
+    dev_loader   = data.DataLoader(dev_dataset,   batch_size = batch_size, shuffle = True)
+    test_loader  = data.DataLoader(test_dataset,  batch_size = batch_size, shuffle = True)
+
+    return train_loader, dev_loader, test_loader
+
+# ==========================================================
+# TRAIN FFN
+# ==========================================================
+
+def train_model(mdl, bs, learning_rate, num_epochs, text):
+
+    # Get dataloaders
+    train_loader, dev_loader, test_loader = get_dataloaders(batch_size = bs)
+
+    # Construct optimizer and criterion
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(mdl.parameters(), lr=learning_rate)
+
+    # Tensorboard connection
+    # now = datetime.now()
+    # logger = Logger('./logs/' + now.strftime("%Y %m %d-%H %M %S") + "/")
+    # print('Tensorboard model name: ' + now.strftime("%Y %m %d-%H %M %S"))
+
+    # Train the model
+    total_step = len(train_loader)
+    for epoch in range(num_epochs):
+        for i, (art, que, a, b, c, d, y) in enumerate(train_loader):
+
+            art = art.to(device, dtype = torch.float32)
+            que = que.to(device, dtype = torch.float32)
+            a = a.to(device, dtype = torch.float32)
+            b = b.to(device, dtype = torch.float32)
+            c = c.to(device, dtype = torch.float32)
+            d = d.to(device, dtype = torch.float32)
+            y = y.to(device)
+
+            # Forward pass
+            yhat = mdl.forward(art, que, a, b, c, d)
+            loss = criterion(yhat, y)
+
+            # Backward and optimize
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            _, y_pred = torch.max(yhat, 1)
+            accuracy = (y == y_pred.squeeze()).float().mean()
+
+            #info = { str(text + 'Loss'): loss.item(), str(text + 'Accuracy'): accuracy.item() }
+            #for tag, value in info.items():
+                #logger.scalar_summary(tag, value, epoch * len(train_loader) + i)
+
+    return mdl, dev_loader, test_loader
+
+# ==========================================================
+# TEST FFN
+# ==========================================================
+
+def tests(mdl, dev_loader, test_loader):
+
+    # Run test on dev dataset
+    mdl.eval()
+    with torch.no_grad():
+        correct = 0
+        total = 0
+        for i, (art, que, a, b, c, d, y) in enumerate(dev_loader):
+
+            art = art.to(device, dtype = torch.float32)
+            que = que.to(device, dtype = torch.float32)
+            a = a.to(device, dtype = torch.float32)
+            b = b.to(device, dtype = torch.float32)
+            c = c.to(device, dtype = torch.float32)
+            d = d.to(device, dtype = torch.float32)
+            y = y.to(device)
+
+            yhat = mdl.forward(art, que, a, b, c, d)
+            _, y_pred = torch.max(yhat, 1)
+            correct += (y == y_pred).sum().item()
+            total += y.shape[0]
+
+        print('Accuracy of the network on the dev set: {} %'.format(100 * correct / total))
+
+    # Run test on test dataset
+    with torch.no_grad():
+        correct = 0
+        total = 0
+        for i, (art, que, a, b, c, d, y) in enumerate(test_loader):
+
+            art = art.to(device, dtype = torch.float32)
+            que = que.to(device, dtype = torch.float32)
+            a = a.to(device, dtype = torch.float32)
+            b = b.to(device, dtype = torch.float32)
+            c = c.to(device, dtype = torch.float32)
+            d = d.to(device, dtype = torch.float32)
+            y = y.to(device)
+
+            yhat = mdl.forward(art, que, a, b, c, d)
+            _, y_pred = torch.max(yhat, 1)
+            correct += (y == y_pred).sum().item()
+            total += y.shape[0]
+
+        print('Accuracy of the network on the test set: {} %'.format(100 * correct / total))
+
+# ==========================================================
+# MAIN
+# ==========================================================
+
+def main():
+
+    # Load and process data
+    files = ['data/train_data', 'data/dev_data', 'data/test_data']
+
+    for f in files:
+        alter_file(f)
+
+    # Train model
+
+    ffn_mdl, dev_loader, test_loader = train_model(FFN().to(device), 32, 0.002, 3, "GRU ")
+
+    # Evaluate model
+
+    tests(ffn_mdl, dev_loader, test_loader)
+
+if __name__=='__main__':
+    main()
