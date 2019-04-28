@@ -20,6 +20,17 @@
 2. Download and unzip https://bit.ly/2GE1Frw into CNN/ .The files weight_matrix.pickle and word_to_idx.pickle should be directly under the CNN folder.
 3. Run cnn.py
 
+## Setup for GRU
+
+### To evauluate the model:
+1. Download and unzip data from https://bit.ly/2VrGPE8 into GRU/
+2. Download the trained model https://bit.ly/2DyVB1t into GRU/
+3. Run gru_eval.py
+
+### To train the model:
+1. Download and unzip data from https://bit.ly/2VrGPE8 into GRU/
+2. Run gru.py
+
 ## Setup for BERT
 
 ### To evaluate the model:
