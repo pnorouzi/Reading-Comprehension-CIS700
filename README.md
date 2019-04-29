@@ -1,11 +1,11 @@
 # CIS700-BERT-RACE
 
-## Setup for Logistic Regresion
+## Setup for Logistic Regresion (Non-Deep Baseline)
 1. Download and unzip https://bit.ly/2GE1Frw into Logistic_Regression/Glove/
 2. Unzip Data.zip in Logistic_Regression/
 3. From Logistic_Regression, run python3 run.py
 
-## Setup for CNN
+## Setup for CNN (Deep Baseline #1)
 
 ### To evaluate the model:
 
@@ -20,13 +20,13 @@
 2. Download and unzip https://bit.ly/2GE1Frw into CNN/ .The files weight_matrix.pickle and word_to_idx.pickle should be directly under the CNN folder.
 3. Run cnn.py
 
-## Setup for Feed Forward Net
+## Setup for Feed Forward Net (Deep Baseline #2)
 
 ### To train and evaluate the model:
 1. Download and unzip data from https://bit.ly/2IMpAY5
 2. Run feed_forward.py
 
-## Setup for GRU
+## Setup for GRU (Deep Baseline #3)
 
 ### To evauluate the model:
 1. Download and unzip data from https://bit.ly/2VrGPE8 into GRU/
@@ -37,7 +37,7 @@
 1. Download and unzip data from https://bit.ly/2VrGPE8 into GRU/
 2. Run gru.py
 
-## Setup for BERT
+## Setup for BERT (Advanced Deep #1)
 
 ### To evaluate the model:
 
@@ -49,7 +49,7 @@
 1. Run python3 race_bert.py it will run your model and save it in a folder called large_models/
 2. Run evaluate_bert.py post that to run it in test set.
 
-## Setup for DCMN
+## Setup for DCMN (Advanced Deep #2 / Novel Extra Credit)
 
 ### To train and evaluate the model:
 
@@ -60,5 +60,4 @@
 ## Data Hypotheses
 
 The folder Hypo contains all the hypothesis we tested, details regarding those are in the slides (Attention class.pdf), technical report and the blog post.
-
 
