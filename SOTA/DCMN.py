@@ -167,9 +167,8 @@ class Matching_Attention(nn.Module):
     '''This unit implements the matching attention mechanism used
     by the DCMN to match an option or the question to the passage.
     
-    The notation used below is the exact notation used by the 
-    https://arxiv.org/pdf/1901.09381.pdf.
-    '''
+    The notation used below is the exact notation used by the paper
+    at https://arxiv.org/pdf/1901.09381.pdf.'''
     
     def __init__(self, size=768):
         super(Matching_Attention, self).__init__()
