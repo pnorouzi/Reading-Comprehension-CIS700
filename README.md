@@ -1,5 +1,7 @@
 # CIS700-BERT-RACE
 
+The work presented below was a joint effort of Peyman Norouzi, Samuel Oshay, Leonardo Murri, and Dewang Sultania.
+
 ## Setup for Logistic Regresion (Non-Deep Baseline)
 1. Download and unzip https://bit.ly/2GE1Frw into Logistic_Regression/Glove/
 2. Unzip Data.zip in Logistic_Regression/
